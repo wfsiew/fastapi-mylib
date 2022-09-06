@@ -12,8 +12,8 @@ from .constants import SECRET, ALGORITHM
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl='o/token')
 
 class Token(BaseModel):
-    access_token: str
-    token_type: str
+    token: str
+    type: str
 
 class TokenData(BaseModel):
     username: str | None = None
