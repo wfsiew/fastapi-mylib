@@ -4,7 +4,7 @@ from fastapi.security import OAuth2PasswordRequestForm
 from jose import jwt
 from ..models import UserOut
 from ..services.user import UserService
-from ..constants import SECRET, ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES
+from ..constants import SECRET, ALGORITHM
 from ..dependencies import get_user_service, get_current_user, Token
 import logging
 
