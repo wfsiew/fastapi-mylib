@@ -1,7 +1,8 @@
+from datetime import datetime
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 
 from .models import UserOut
 from .services.user import UserService
@@ -9,14 +10,16 @@ from .services.book import BookService
 from .constants import SECRET, ALGORITHM
 
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl='o/token')
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl='o/token', scheme_name='JWT')
 
 class Token(BaseModel):
     token: str
+    refresh_token: str
     type: str
 
 class TokenData(BaseModel):
-    username: str | None = None
+    sub: str | None = None
+    exp: str | None = None
 
 async def get_user_service(request: Request) -> UserService:
     return UserService(request.app.state.pool)
@@ -32,14 +35,20 @@ async def get_current_user(token: str = Depends(oauth2_scheme), userService: Use
     )
     try:
         payload = jwt.decode(token, SECRET, algorithms=[ALGORITHM])
-        username: str = payload.get('sub')
-        if username is None:
+        token_data = TokenData(**payload)
+        if token_data.sub is None:
             raise credentials_exception
-        token_data = TokenData(username=username)
-    except JWTError:
+        
+        if datetime.fromtimestamp(token_data.exp) < datetime.now():
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail='Token expired',
+                headers={'WWW-Authenticate': 'Bearer'},
+            )
+    except (JWTError, ValidationError):
         raise credentials_exception
-    user = await userService.find_by_username(token_data.username)
-    userx = UserOut(id=user.id, username=user.username, roles=user.roles)
+    user = await userService.find_by_username(token_data.sub)
     if user is None:
         raise credentials_exception
+    userx = UserOut(id=user.id, username=user.username, roles=user.roles)
     return userx

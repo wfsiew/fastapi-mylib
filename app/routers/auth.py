@@ -4,7 +4,7 @@ from fastapi.security import OAuth2PasswordRequestForm
 from jose import jwt
 from ..models import UserOut
 from ..services.user import UserService
-from ..constants import SECRET, ALGORITHM
+from ..constants import SECRET, ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES, REFRESH_TOKEN_EXPIRE_MINUTES
 from ..dependencies import get_user_service, get_current_user, Token
 import logging
 
@@ -20,13 +20,21 @@ async def authenticate_user(username: str, password: str, userService: UserServi
         return False
     return user
 
-def create_access_token(data: dict, expires_delta: timedelta | None = None):
-    to_encode = data.copy()
-    if expires_delta:
-        expire = datetime.utcnow() + expires_delta
+def create_access_token(subject: str, expires_delta: timedelta | None = None) -> str:
+    if expires_delta is not None:
+        expires_delta = datetime.utcnow() + expires_delta
     else:
-        expire = datetime.utcnow() + timedelta(days=5)
-    to_encode.update({"exp": expire})
+        expires_delta = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    to_encode = {'exp': expires_delta, 'sub': subject}
+    encoded_jwt = jwt.encode(to_encode, SECRET, algorithm=ALGORITHM)
+    return encoded_jwt
+
+def create_refresh_token(subject: str, expires_delta: timedelta | None = None) -> str:
+    if expires_delta is not None:
+        expires_delta = datetime.utcnow() + expires_delta
+    else:
+        expires_delta = datetime.utcnow() + timedelta(minutes=REFRESH_TOKEN_EXPIRE_MINUTES)
+    to_encode = {'exp': expires_delta, 'sub': subject}
     encoded_jwt = jwt.encode(to_encode, SECRET, algorithm=ALGORITHM)
     return encoded_jwt
 
@@ -41,11 +49,14 @@ async def login_for_access_token(data: OAuth2PasswordRequestForm = Depends(), us
                 detail="Incorrect username or password",
                 headers={"WWW-Authenticate": "Bearer"},
             )
-        token_expires = timedelta(days=5)
-        token = create_access_token(
-            data={'sub': user.username}, expires_delta=token_expires
-        )
-        return {'token': token, 'type': 'bearer'}
+        token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        token = create_access_token(user.username, expires_delta=token_expires)
+        refresh_token = create_refresh_token(user.username, expires_delta=token_expires)
+        return {
+            'token': token,
+            'refresh_token': refresh_token,
+            'type': 'bearer'
+        }
     
     except Exception as e:
         logger.error(e)
