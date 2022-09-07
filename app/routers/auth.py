@@ -2,10 +2,10 @@ from datetime import datetime, timedelta
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from jose import jwt
-from ..models import UserOut
-from ..services.user import UserService
-from ..constants import SECRET, ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES, REFRESH_TOKEN_EXPIRE_MINUTES
-from ..dependencies import get_user_service, get_current_user, Token
+from app.models import UserOut
+from app.services.user import UserService
+from app.constants import SECRET, ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES, REFRESH_TOKEN_EXPIRE_MINUTES
+from app.dependencies import get_user_service, get_current_user, Token
 import logging
 
 router = APIRouter(tags=['auth'])
@@ -46,14 +46,13 @@ async def login_for_access_token(data: OAuth2PasswordRequestForm = Depends(), us
         if not user:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Incorrect username or password",
-                headers={"WWW-Authenticate": "Bearer"},
+                detail='Incorrect username or password',
+                headers={'WWW-Authenticate': 'Bearer'},
             )
-        token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-        token = create_access_token(user.username, expires_delta=token_expires)
-        refresh_token = create_refresh_token(user.username, expires_delta=token_expires)
+        access_token = create_access_token(user.username, timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
+        refresh_token = create_refresh_token(user.username, timedelta(minutes=REFRESH_TOKEN_EXPIRE_MINUTES))
         return {
-            'token': token,
+            'access_token': access_token,
             'refresh_token': refresh_token,
             'type': 'bearer'
         }
@@ -66,6 +65,9 @@ async def login_for_access_token(data: OAuth2PasswordRequestForm = Depends(), us
 async def user_details(current_user: UserOut = Depends(get_current_user)):
     try:
         return current_user
+    
+    except HTTPException:
+        pass
     
     except Exception as e:
         logger.error(e)

@@ -1,9 +1,9 @@
 from fastapi import APIRouter, Response, Depends, HTTPException, status
-from ..models import Pager, BooksBorrow, Book, User
-from ..services.book import BookService
-from ..services.user import UserService
-from ..dto.book import RegisterBookDto
-from ..dependencies import get_book_service, get_current_user, get_user_service
+from app.models import Pager, BooksBorrow, Book, User
+from app.services.book import BookService
+from app.services.user import UserService
+from app.dto.book import RegisterBookDto
+from app.dependencies import get_book_service, get_current_user, get_user_service
 import logging
 
 router = APIRouter(prefix='/book', tags=['book'])

@@ -10,16 +10,16 @@ from .services.book import BookService
 from .constants import SECRET, ALGORITHM
 
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl='o/token', scheme_name='JWT')
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl='/o/token', scheme_name='JWT')
 
 class Token(BaseModel):
-    token: str
+    access_token: str
     refresh_token: str
     type: str
 
 class TokenData(BaseModel):
     sub: str | None = None
-    exp: str | None = None
+    exp: int | None = None
 
 async def get_user_service(request: Request) -> UserService:
     return UserService(request.app.state.pool)
