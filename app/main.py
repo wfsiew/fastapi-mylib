@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from contextlib import asynccontextmanager
 
 from .routers import auth, books
 
@@ -15,7 +16,13 @@ fh.setLevel(logging.ERROR)
 fh.setFormatter(formatter)
 logger.addHandler(fh)
 
-app = FastAPI(dependencies=[], title='Lib', description='Lib API description', version='1.0')
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    app.state.pool = await asyncpg.create_pool(user='postgres', password='postgres', database='libdb', host='localhost', port=5432, max_size=50)
+    yield
+    await app.state.pool.close()
+
+app = FastAPI(lifespan=lifespan, dependencies=[], title='Lib', description='Lib API description', version='1.0')
 origins = ['*']
 
 app.add_middleware(
@@ -31,13 +38,13 @@ app.include_router(auth.router)
 app.include_router(books.router)
 
 
-@app.on_event("startup")
-async def startup():
-    app.state.pool = await asyncpg.create_pool(user='postgres', password='postgres', database='libdb', host='localhost', port=5432, max_size=50)
+# @app.on_event("startup")
+# async def startup():
+#     app.state.pool = await asyncpg.create_pool(user='postgres', password='postgres', database='libdb', host='localhost', port=5432, max_size=50)
 
-@app.on_event("shutdown")
-async def shutdown():
-    await app.state.pool.close()
+# @app.on_event("shutdown")
+# async def shutdown():
+#     await app.state.pool.close()
 
 
 @app.get("/")
